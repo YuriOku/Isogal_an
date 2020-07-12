@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import h5py
 import math
-import scipy.integrate as int
+import scipy.integrate as integrate
 import warnings
 
 # %% [markdown]
@@ -46,7 +46,7 @@ def integral(hsml, z):
     if hsml**2 - z**2 < 0:
         return 0
     else:
-        return int.quad(func, 0, math.sqrt(hsml**2 - z**2), args=(hsml, z))[0]
+        return integrate.quad(func, 0, math.sqrt(hsml**2 - z**2), args=(hsml, z))[0]
 
 np_W3 = np.frompyfunc(W3,2,1)
 np_int = np.frompyfunc(integral,2,1)
@@ -135,137 +135,49 @@ Profiles
 f = open('Leroy2008.txt','r')
 Leroy08 = f.readlines()
 f.close()
-IC2574 = []
-NGC4214 = []
-NGC2976 = []
-NGC4449 = []
-NGC3077 = []
-NGC7793 = []
+ObsDataName = ["IC2574 ","NGC2976", "NGC3077", "NGC4214", "NGC4449","NGC7793"]
+ObsData = [[] for i in range(len(ObsDataName))]
+
 
 # %%
-warnings.filterwarnings('ignore')
-for i in range(len(Leroy08)):
-    if Leroy08[i][0:7] == 'IC2574 ':
-        IC2574.append([
-            float(Leroy08[i][8:12]),
-            float(Leroy08[i][13:17]),
-            # float(Leroy08[i][18:23]),
-            float(Leroy08[i][24:27]),
-            # float(Leroy08[i][28:34]),
-            # float(Leroy08[i][35:39]),
-            float(Leroy08[i][40:47]),
-            float(Leroy08[i][48:53]),
-            float(Leroy08[i][54:61]),
-            float(Leroy08[i][62:67]),
-            # float(Leroy08[i][68:74]),
-            # float(Leroy08[i][75:83])
-            ])
-# %%
-warnings.filterwarnings('ignore')
-for i in range(len(Leroy08)):
-    if Leroy08[i][0:7] == 'NGC4214':
-        NGC4214.append([
-            float(Leroy08[i][8:12]),
-            float(Leroy08[i][13:17]),
-            # float(Leroy08[i][18:23]),
-            float(Leroy08[i][24:27]),
-            # float(Leroy08[i][28:34]),
-            # float(Leroy08[i][35:39]),
-            float(Leroy08[i][40:47]),
-            float(Leroy08[i][48:53]),
-            float(Leroy08[i][54:61]),
-            float(Leroy08[i][62:67]),
-            # float(Leroy08[i][68:74]),
-            # float(Leroy08[i][75:83])
-            ])
-# %%
-warnings.filterwarnings('ignore')
-for i in range(len(Leroy08)):
-    if Leroy08[i][0:7] == 'NGC2976':
-        NGC2976.append([
-            float(Leroy08[i][8:12]),
-            float(Leroy08[i][13:17]),
-            # float(Leroy08[i][18:23]),
-            float(Leroy08[i][24:27]),
-            # float(Leroy08[i][28:34]),
-            # float(Leroy08[i][35:39]),
-            float(Leroy08[i][40:47]),
-            float(Leroy08[i][48:53]),
-            float(Leroy08[i][54:61]),
-            float(Leroy08[i][62:67]),
-            # float(Leroy08[i][68:74]),
-            # float(Leroy08[i][75:83])
-            ])
-# %%
-warnings.filterwarnings('ignore')
-for i in range(len(Leroy08)):
-    if Leroy08[i][0:7] == 'NGC4449':
-        NGC4449.append([
-            float(Leroy08[i][8:12]),
-            float(Leroy08[i][13:17]),
-            # float(Leroy08[i][18:23]),
-            float(Leroy08[i][24:27]),
-            # float(Leroy08[i][28:34]),
-            # float(Leroy08[i][35:39]),
-            float(Leroy08[i][40:47]),
-            float(Leroy08[i][48:53]),
-            float(Leroy08[i][54:61]),
-            float(Leroy08[i][62:67]),
-            # float(Leroy08[i][68:74]),
-            # float(Leroy08[i][75:83])
-            ])
-# %%
-warnings.filterwarnings('ignore')
-for i in range(len(Leroy08)):
-    if Leroy08[i][0:7] == 'NGC3077':
-        NGC3077.append([
-            float(Leroy08[i][8:12]),
-            float(Leroy08[i][13:17]),
-            # float(Leroy08[i][18:23]),
-            float(Leroy08[i][24:27]),
-            # float(Leroy08[i][28:34]),
-            # float(Leroy08[i][35:39]),
-            float(Leroy08[i][40:47]),
-            float(Leroy08[i][48:53]),
-            float(Leroy08[i][54:61]),
-            float(Leroy08[i][62:67]),
-            # float(Leroy08[i][68:74]),
-            # float(Leroy08[i][75:83])
-            ]) 
-# %%
+def ConvertToFloat(str):
+    try:
+        ans = float(str)
+    except ValueError:
+        ans = 0
+    return ans
 
-warnings.filterwarnings('ignore')
 for i in range(len(Leroy08)):
-    if Leroy08[i][0:7] == 'NGC7793':
-        NGC7793.append([
-            float(Leroy08[i][8:12]),
-            float(Leroy08[i][13:17]),
-            # float(Leroy08[i][18:23]),
-            float(Leroy08[i][24:27]),
-            # float(Leroy08[i][28:34]),
-            # float(Leroy08[i][35:39]),
-            float(Leroy08[i][40:47]),
-            float(Leroy08[i][48:53]),
-            float(Leroy08[i][54:61]),
-            float(Leroy08[i][62:67]),
-            # float(Leroy08[i][68:74]),
-            # float(Leroy08[i][75:83])
-            ]) 
-# %%
-IC2574 = np.array(IC2574)
-NGC2976 = np.array(NGC2976)
-NGC3077 = np.array(NGC3077)
-NGC4214 = np.array(NGC4214)
-NGC4449 = np.array(NGC4449)
-NGC7793 = np.array(NGC7793)
-ObsData = [IC2574, NGC2976, NGC3077, NGC4214, NGC4449,NGC7793]
-ObsDataName = ["IC2574","NGC2976", "NGC3077", "NGC4214", "NGC4449","NGC7793"]
+    for j in range(len(ObsData)):
+        if Leroy08[i][0:7] == ObsDataName[j]:
+            ObsData[j].append([
+            ConvertToFloat(Leroy08[i][8:12]),
+            ConvertToFloat(Leroy08[i][13:17]),
+            ConvertToFloat(Leroy08[i][18:23]),
+            ConvertToFloat(Leroy08[i][24:27]),
+            ConvertToFloat(Leroy08[i][28:34]),
+            ConvertToFloat(Leroy08[i][35:39]),
+            ConvertToFloat(Leroy08[i][40:47]),
+            ConvertToFloat(Leroy08[i][48:53]),
+            ConvertToFloat(Leroy08[i][54:61]),
+            ConvertToFloat(Leroy08[i][62:67]),
+            ConvertToFloat(Leroy08[i][68:74]),
+            ConvertToFloat(Leroy08[i][75:83])
+            ])
 
 # %%
-def plot(j):      
+
+for i in range(len(ObsDataName)):
+    ObsData[i] = np.array(ObsData[i])
+
+# %%
+def plot(j):
+    fig = plt.figure(figsize=[8,6])
+    ax = fig.add_subplot(111) 
     if j == 0:
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+        figname = 'SigmaGas'
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111)
         ax.set_yscale('log')
         ax.set_xlabel('Distance from center [kpc]')
         ax.set_ylabel('$\Sigma_{gas}$ [Msun/kpc$^2$]')
@@ -274,13 +186,13 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1],label=models[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i])
+        for i in range(len(ObsData)):
+            ax.errorbar(ObsData[i].T[0], ObsData[i].T[2]*1e6, yerr=ObsData[i].T[3]*1e6, linestyle='dashed', label=ObsDataName[i])
         ax.legend()
-        plt.rcParams.update({"font.size": 12})
         print(Profiles[j])   
     if j == 1:
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+        figname = 'SigmaSFR'
         ax.set_yscale('log')
         ax.set_xlabel('Distance from center [kpc]')
         ax.set_ylabel('$\Sigma_{SFR}$ [Msun/kpc$^2$]')
@@ -289,15 +201,13 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1],label=models[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i])
         for i in range(len(ObsData)):
-            ax.errorbar(ObsData[i].T[0], ObsData[i].T[5]*1e-4, yerr=ObsData[i].T[6]*1e-4, linestyle='dashed', label=ObsDataName[i])
+            ax.errorbar(ObsData[i].T[0], ObsData[i].T[8]*1e-4, yerr=ObsData[i].T[9]*1e-4, linestyle='dashed', label=ObsDataName[i])
         ax.legend(fontsize=9)
-        plt.rcParams.update({"font.size": 12})
         print(Profiles[j])     
     if j == 3:
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+        figname = 'SigmaStar'
         ax.set_yscale('log')
         ax.set_xlabel('Distance from center [kpc]')
         ax.set_ylabel('$\Sigma_{*}$ [Msun/kpc$^2$]')
@@ -306,17 +216,15 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1],label=models[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i])
         ax.legend()      
-        # for i in range(len(ObsData)):
-        #     ax.errorbar(ObsData[i].T[0], ObsData[i].T[3]*1e+6, yerr=ObsData[i].T[4]*1e+6, linestyle='dashed', label=ObsDataName[i])
+        for i in range(len(ObsData)):
+            ax.errorbar(ObsData[i].T[0], ObsData[i].T[6]*1e+6, yerr=ObsData[i].T[7]*1e+6, linestyle='dashed', label=ObsDataName[i])
         ax.legend()
-        plt.rcParams.update({"font.size": 12})
 
         print(Profiles[j])   
     if j == 4:
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+        figname = 'Metallicity'
         ax.set_yscale('log')
         ax.set_xlabel('r/r$_{50}$')
         ax.set_ylabel('Metallicity')
@@ -325,13 +233,11 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1],label=models[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i])
         ax.legend()
-        plt.rcParams.update({"font.size": 12})
         print(Profiles[j])
     if j == 5:
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+        figname = 'SigmaOutflowRate'
         ax.set_yscale('log')
         ax.set_xlabel('Distance from center [kpc]')
         ax.set_ylabel('$\Sigma_{\dot{M}_{out}}$ [Msun/yr/kpc$^2$]')
@@ -340,13 +246,11 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1],label=models[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i])
         ax.legend()
-        plt.rcParams.update({"font.size": 12})
         print(Profiles[j])
     if j == 6:
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+        figname = 'SigmaMassLoadingFactor'
         ax.set_yscale('log')
         ax.set_xlabel('Distance from center [kpc]')
         ax.set_ylabel('Mass loading factor')
@@ -358,15 +262,16 @@ def plot(j):
             SigmaSFR = np.where(np.array(SurfaceDensityProfile[i][1][1]) > 0, np.array(SurfaceDensityProfile[i][1][1]), np.inf)
             ax.plot(SurfaceDensityProfile[i][1][0], np.array(SurfaceDensityProfile[i][5][1])/SigmaSFR,label=models[i])
         ax.legend()
-        plt.rcParams.update({"font.size": 12})
         print("mass loading factor")
 
+    plt.rcParams.update({"font.size": 14})
+    plt.legend(fontsize=12)
     return
 
 
 # %%
 plot(6)
-# plt.savefig('SigmaOutflowRate.png')
+# plt.savefig('Metallicity.png')
 
 
 

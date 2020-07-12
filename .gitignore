@@ -1,0 +1,7 @@
+/.vscode/
+/geodome_model/
+/Osaka2019_isogal/
+/centroid_model/
+/results/
+/.ipynb_checkpoints
+*png
