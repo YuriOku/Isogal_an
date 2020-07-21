@@ -19,6 +19,7 @@ models = ["Osaka2019_isogal"
         #   , "geodome_model/geodome_original"\
           , "geodome_model/ver_19.11.1"
           , "centroid_model/ver06271"
+          , "centroid_model/ver07211"
           ]
 
 snapshot = [0]*len(models)
@@ -270,10 +271,11 @@ def plot(j):
 
 
 # %%
-plot(6)
-# plt.savefig('Metallicity.png')
+plot(5)
+# plt.savefig('SigmaOutflowRate.png')
 
-
+# %% 
+Profiles
 
 
 # %%

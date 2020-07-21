@@ -8,17 +8,18 @@ import h5py
 import math
 import scipy.integrate as int
 import numba
-
+from tqdm import trange
 
 # %%
 time = 100 # number of snapshots in 0 -- 1 Gyr
-H = 1 # height from galactic plane in kpc
+H = 4 # height from galactic plane in kpc
 alpha = 3.1536e7/3.085677581e16 # 1 km/sec in kpc/yr
 
 models = ["Osaka2019_isogal"
           #, "geodome_model/geodome_original"\
           , "geodome_model/ver_19.11.1"
           , "centroid_model/ver06271"
+          , "centroid_model/ver07211"
           ]
 
 snapshot = [[0]*time for i in range(len(models))]
@@ -114,7 +115,7 @@ def main_r(X, Y, Z, hsml, Vz, M, H, R):
 
 # %%
 for k in range(len(models)):
-    for t in range(time):
+    for t in trange(time):
         GalPos  = subfind[k][t]['Group/GroupPos'][0]
         GalVel = subfind[k][t]['Subhalo/SubhaloVel'][0]
         X = np.array(snapshot[k][t]['PartType0/Coordinates']).T[0]
@@ -163,11 +164,11 @@ for k in range(len(models)):
 timestep = np.linspace(0,0.99,100)
 # plt.plot(timestep,np.array(MassOutFlowRate_S19[0])*np.sqrt(timestep), label="Shimizu et al. (2019)")
 # plt.plot(timestep,MassOutFlowRate_S19[0], linestyle="dashed", label=r"$\sqrt{t/1\,{\rm Gyr}}$ fixed")
-plt.plot(timestep,MassOutFlowRate[0], linestyle="dotted", label=r"$\sqrt{t/1\,{\rm Gyr}}$ fixed & Eq. (2)")
-plt.yscale('log')
-plt.ylabel('Mass outflow rate [Msun/yr]')
-plt.xlabel('Time [Gyr]')
-plt.legend(bbox_to_anchor=(1, 0), loc='lower right')
+# plt.plot(timestep,MassOutFlowRate[0], linestyle="dotted", label=r"$\sqrt{t/1\,{\rm Gyr}}$ fixed & Eq. (2)")
+# plt.yscale('log')
+# plt.ylabel('Mass outflow rate [Msun/yr]')
+# plt.xlabel('Time [Gyr]')
+# plt.legend(bbox_to_anchor=(1, 0), loc='lower right')
 #plt.savefig("OutflowRate4kpc.pdf")
 
 
@@ -184,7 +185,7 @@ plt.yscale('log')
 plt.ylabel('Mass outflow rate [Msun/yr]')
 plt.xlabel('time [10Myr]')
 plt.legend(bbox_to_anchor=(1, 0), loc='lower right')
-plt.savefig('OutFlowRate1kpc.png',bbox_inches="tight")
+plt.savefig('OutFlowRate4kpc.png',bbox_inches="tight")
 
 
 # %%
@@ -196,7 +197,7 @@ plt.yscale('log')
 plt.ylabel('Mass loading factor')
 plt.xlabel('time [10Myr]')
 plt.legend(bbox_to_anchor=(1, 0), loc='lower right')
-plt.savefig("MassLoadingFactor1kpc.png",bbox_inches="tight")
+plt.savefig("MassLoadingFactor4kpc.png",bbox_inches="tight")
 
 
 # %%
