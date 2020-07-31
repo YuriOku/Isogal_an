@@ -8,6 +8,7 @@ import h5py
 import math
 import scipy.integrate as integrate
 import warnings
+from tqdm import trange
 
 # %% [markdown]
 # # Load data set
@@ -16,11 +17,22 @@ import warnings
 time = 100 # at 1 Gyr
 H = 4 # height to calculate outflow rate
 models = ["Osaka2019_isogal"
-        #   , "geodome_model/geodome_original"\
           , "geodome_model/ver_19.11.1"
-          , "centroid_model/ver06271"
-          , "centroid_model/ver07211"
+              , "geodome_model/OKU2020"
+          , "centroid_model/ver07271_NoMomCeiling"
+          , "centroid_model/ver07272_CHEVALIER1974"
+          , "centroid_model/ver07272_nfb1"
+          , "centroid_model/ver07272_SFE001"
           ]
+modelnames = [
+    "Osaka2019",
+    "Geodesic dome model & Cioffi+ 1988",
+    "Geodesic dome model & Athena fitting",
+    "Centroid model & Athena fitting",
+    "Centroid model & Cioffi+ 1988",
+    "Centroid model & Athena fitting (nfb = 1)",
+    "Centroid model & Athena fitting (SFE = 0.01)",
+]
 
 snapshot = [0]*len(models)
 subfind  = [0]*len(models)
@@ -84,7 +96,7 @@ Area = 4*math.pi*(np.roll(BinPos,-1)**2 - BinPos**2)[:-1]
 for k in range(len(models)):
     GalPos  = subfind[k]['Group/GroupPos'][0]
 
-    for l in range(len(Profiles)):
+    for l in trange(len(Profiles)):
         X = np.array(snapshot[k]['PartType{}/Coordinates'.format(Profiles[l][0])]).T[0] - GalPos[0]
         Y = np.array(snapshot[k]['PartType{}/Coordinates'.format(Profiles[l][0])]).T[1] - GalPos[1]
         Z = np.array(snapshot[k]['PartType{}/Coordinates'.format(Profiles[l][0])]).T[2] - GalPos[2]
@@ -187,9 +199,10 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=modelnames[i])
         for i in range(len(ObsData)):
-            ax.errorbar(ObsData[i].T[0], ObsData[i].T[2]*1e6, yerr=ObsData[i].T[3]*1e6, linestyle='dashed', label=ObsDataName[i])
+            ax.fill_between(ObsData[i].T[0], ObsData[i].T[2]*1e6+ObsData[i].T[3]*1e6, ObsData[i].T[2]*1e6-ObsData[i].T[3]*1e6, alpha=0.5)#, label=ObsDataName[i])
+            # ax.errorbar(ObsData[i].T[0], ObsData[i].T[2]*1e6, yerr=ObsData[i].T[3]*1e6,fmt=',')#, label=ObsDataName[i])
         ax.legend()
         print(Profiles[j])   
     if j == 1:
@@ -202,9 +215,10 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=modelnames[i])
         for i in range(len(ObsData)):
-            ax.errorbar(ObsData[i].T[0], ObsData[i].T[8]*1e-4, yerr=ObsData[i].T[9]*1e-4, linestyle='dashed', label=ObsDataName[i])
+            ax.fill_between(ObsData[i].T[0], ObsData[i].T[8]*1e-4+ObsData[i].T[9]*1e-4, ObsData[i].T[8]*1e-4-ObsData[i].T[9]*1e-4, alpha=0.5)#, label=ObsDataName[i])
+            # ax.errorbar(ObsData[i].T[0], ObsData[i].T[8]*1e-4, yerr=ObsData[i].T[9]*1e-4, linestyle='dashed')#, label=ObsDataName[i])
         ax.legend(fontsize=9)
         print(Profiles[j])     
     if j == 3:
@@ -217,10 +231,11 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=modelnames[i])
         ax.legend()      
         for i in range(len(ObsData)):
-            ax.errorbar(ObsData[i].T[0], ObsData[i].T[6]*1e+6, yerr=ObsData[i].T[7]*1e+6, linestyle='dashed', label=ObsDataName[i])
+            ax.fill_between(ObsData[i].T[0], ObsData[i].T[6]*1e+6+ObsData[i].T[7]*1e+6, ObsData[i].T[6]*1e+6-ObsData[i].T[7]*1e+6, alpha=0.7)#, label=ObsDataName[i])
+            # ax.errorbar(ObsData[i].T[0], ObsData[i].T[6]*1e+6, yerr=ObsData[i].T[7]*1e+6, linestyle='dashed')#, label=ObsDataName[i])
         ax.legend()
 
         print(Profiles[j])   
@@ -234,7 +249,7 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=modelnames[i])
         ax.legend()
         print(Profiles[j])
     if j == 5:
@@ -247,7 +262,7 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=modelnames[i])
         ax.legend()
         print(Profiles[j])
     if j == 6:
@@ -261,7 +276,7 @@ def plot(j):
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
             SigmaSFR = np.where(np.array(SurfaceDensityProfile[i][1][1]) > 0, np.array(SurfaceDensityProfile[i][1][1]), np.inf)
-            ax.plot(SurfaceDensityProfile[i][1][0], np.array(SurfaceDensityProfile[i][5][1])/SigmaSFR,label=models[i])
+            ax.plot(SurfaceDensityProfile[i][1][0], np.array(SurfaceDensityProfile[i][5][1])/SigmaSFR,label=modelnames[i])
         ax.legend()
         print("mass loading factor")
 
@@ -271,8 +286,8 @@ def plot(j):
 
 
 # %%
-plot(5)
-# plt.savefig('SigmaOutflowRate.png')
+plot(4)
+# plt.savefig('Metallicity.png')
 
 # %% 
 Profiles

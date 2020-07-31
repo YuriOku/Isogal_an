@@ -12,30 +12,35 @@ from tqdm import trange
 
 # %%
 time = 100 # number of snapshots in 0 -- 1 Gyr
-H = 4 # height from galactic plane in kpc
+H = 100 # height from galactic plane in kpc
 alpha = 3.1536e7/3.085677581e16 # 1 km/sec in kpc/yr
 
 models = ["Osaka2019_isogal"
-          #, "geodome_model/geodome_original"\
+        #   , "geodome_model/geodome_original"\
           , "geodome_model/ver_19.11.1"
-          , "centroid_model/ver06271"
-          , "centroid_model/ver07211"
+          , "geodome_model/OKU2020"
+          , "centroid_model/ver07271_NoMomCeiling"
+          , "centroid_model/ver07272_CHEVALIER1974"
+          , "centroid_model/ver07272_nfb1"
+          , "centroid_model/ver07272_SFE001"
           ]
 
 snapshot = [[0]*time for i in range(len(models))]
 subfind  = [[0]*time for i in range(len(models))]
 MassOutFlowRate = [[0]*time for i in range(len(models))]
+OutFlowVelocity = [[0]*time for i in range(len(models))]
 MassOutFlowRate_S19 = [[0]*time for i in range(len(models))]
 MassOutFlowRate_r02 = [[0]*time for i in range(len(models))]
 MassOutFlowRate_r05 = [[0]*time for i in range(len(models))]
 MassOutFlowRate_r10 = [[0]*time for i in range(len(models))]
 MassOutFlowRate_r20 = [[0]*time for i in range(len(models))]
 SFR = [[0]*time for i in range(len(models))]
+StellarMass = [[0]*time for i in range(len(models))]
 
 for i in range(len(models)):
     for j in range(time):
-        snapshot[i][j] = h5py.File('/home/oku/SimulationData/isogal/{0}/snapshot_{1:03}/snapshot_{1:03}.hdf5'.format(models[i], j), 'r')
-        subfind[i][j]  = h5py.File('/home/oku/SimulationData/isogal/{0}/snapshot_{1:03}/groups_{1:03}/sub_{1:03}.hdf5'.format(models[i], j), 'r')
+        snapshot[i][j] = h5py.File('/home/oku/SimulationData/isogal/{0}/snapshot_{1:03}/snapshot_{1:03}.hdf5'.format(models[i], j+1), 'r')
+        subfind[i][j]  = h5py.File('/home/oku/SimulationData/isogal/{0}/snapshot_{1:03}/groups_{1:03}/sub_{1:03}.hdf5'.format(models[i], j+1), 'r')
 
 # %% [markdown]
 # ## Kernel function
@@ -137,12 +142,17 @@ for k in range(len(models)):
         
 
         MassOutFlowRate[k][t] = dotM*1e10*alpha
+        try:
+            OutFlowVelocity[k][t] = max([np.max(Vz[Z > H]), -np.min(Vz[Z < H])])*alpha*1e9
+        except:
+            OutFlowVelocity[k][t] = 0
         # MassOutFlowRate_S19[k][t] = dotM_S19*1e10*alpha
         # MassOutFlowRate_r02[k][t] = dotM_r02*1e10*alpha
         # MassOutFlowRate_r05[k][t] = dotM_r05*1e10*alpha
         # MassOutFlowRate_r10[k][t] = dotM_r10*1e10*alpha
         # MassOutFlowRate_r20[k][t] = dotM_r20*1e10*alpha
         SFR[k][t] = np.sum(np.array(snapshot[k][t]['PartType0/StarFormationRate']))
+        StellarMass[k][t] = np.sum(np.array(snapshot[k][t]['PartType4/Masses']))
         # print("t {}, dotM {}, dotM_approx {}".format(t, dotM, dotM_approx))
 
 
@@ -161,7 +171,7 @@ for k in range(len(models)):
 
 
 # %%
-timestep = np.linspace(0,0.99,100)
+timestep = np.linspace(0.01,1.00,100)
 # plt.plot(timestep,np.array(MassOutFlowRate_S19[0])*np.sqrt(timestep), label="Shimizu et al. (2019)")
 # plt.plot(timestep,MassOutFlowRate_S19[0], linestyle="dashed", label=r"$\sqrt{t/1\,{\rm Gyr}}$ fixed")
 # plt.plot(timestep,MassOutFlowRate[0], linestyle="dotted", label=r"$\sqrt{t/1\,{\rm Gyr}}$ fixed & Eq. (2)")
@@ -170,46 +180,94 @@ timestep = np.linspace(0,0.99,100)
 # plt.xlabel('Time [Gyr]')
 # plt.legend(bbox_to_anchor=(1, 0), loc='lower right')
 #plt.savefig("OutflowRate4kpc.pdf")
-
+# %%
+modelnames = [
+    "Osaka2019",
+    "Geodesic dome model & Cioffi+ 1988",
+    "Geodesic dome model & Athena fitting",
+    "Centroid model & Athena fitting",
+    "Centroid model & Cioffi+ 1988",
+    "Centroid model & Athena fitting (nfb = 1)",
+    "Centroid model & Athena fitting (SFE = 0.01)",
+]
 
 # %%
 # data = [0]*len(models)
 # for i in range(len(models)):
 #     data[i] = np.loadtxt('/home/oku/SimulationData/isogal/{}/data/{}'.format(models[i], H))
 
+plt.figure(figsize=(10,8))
 for i in range(len(models)):
-    plt.plot(MassOutFlowRate[i],label="{}".format(models[i]))
+    plt.plot(timestep, MassOutFlowRate[i],label="{}".format(modelnames[i]))
     # plt.plot(MassOutFlowRate_S19[i],label="{} my code (Shimizu19 method)".format(models[i]))
     # plt.plot(data[i].T[2],linestyle="dotted", label="{} Shimizu19 code".format(models[i]))
 plt.yscale('log')
-plt.ylabel('Mass outflow rate [Msun/yr]')
-plt.xlabel('time [10Myr]')
-plt.legend(bbox_to_anchor=(1, 0), loc='lower right')
-plt.savefig('OutFlowRate4kpc.png',bbox_inches="tight")
-
-
+plt.ylabel('Mass outflow rate [Msun/yr]', fontsize=12)
+plt.xlabel('time [Gyr]', fontsize=12)
+plt.xticks(fontsize=12)
+plt.yticks(fontsize=12)
+plt.legend(fontsize=12, bbox_to_anchor=(1, 0), loc='lower right')
+# plt.savefig('OutFlowRate1kpc.png',bbox_inches="tight")
+plt.show()
+plt.close()
 # %%
+
+plt.figure(figsize=(10,8))
 for i in range(len(models)):
-    plt.plot(np.array(MassOutFlowRate[i])/np.array(SFR[i]),label="{}".format(models[i]))
+    plt.plot(timestep, np.array(MassOutFlowRate[i])/np.array(SFR[i]),label="{}".format(modelnames[i]))
     # plt.plot(np.array(MassOutFlowRate_S19[i])/np.array(SFR[i]),label="{} my code (Shimizu19 method)".format(models[i]))
     # plt.plot(data[i].T[1],linestyle="dotted", label="{} Shimizu19 code".format(models[i]))
 plt.yscale('log')
-plt.ylabel('Mass loading factor')
-plt.xlabel('time [10Myr]')
-plt.legend(bbox_to_anchor=(1, 0), loc='lower right')
-plt.savefig("MassLoadingFactor4kpc.png",bbox_inches="tight")
-
+plt.ylabel('Mass loading factor', fontsize=12)
+plt.xlabel('time [Gyr]', fontsize=12)
+plt.xticks(fontsize=12)
+plt.yticks(fontsize=12)
+plt.legend(fontsize=12, bbox_to_anchor=(1, 0), loc='lower right')
+# plt.savefig("MassLoadingFactor1kpc.png",bbox_inches="tight")
+plt.show()
+plt.close()
 
 # %%
-plt.plot(SFR[0], label="my code")
-# plt.plot(data[0].T[3],label="Shimizu19 code")
-plt.ylabel('SFR')
-plt.xlabel('time')
-plt.grid()
-plt.legend()
-# plt.savefig("SFR.pdf")
 
+plt.figure(figsize=(10,8))
+for i in range(len(models)):
+    plt.plot(timestep, OutFlowVelocity[i],label="{}".format(modelnames[i]))
+plt.yscale('log')
+plt.ylabel('Max outflow velocity [km/s]')
+plt.xlabel('time [Gyr]', fontsize=12)
+plt.xticks(fontsize=12)
+plt.yticks(fontsize=12)
+plt.legend(fontsize=12, bbox_to_anchor=(1, 0), loc='lower right')
+# plt.savefig("OutflowVelocity1kpc.png",bbox_inches="tight")
+plt.show()
+plt.close()
+# %%
+plt.figure(figsize=(10,8))
+for i in range(len(models)):
+    plt.plot(timestep, SFR[i],label="{}".format(modelnames[i]))
+# plt.yscale('log')
+plt.ylabel('Star formation rate [Msun/yr]', fontsize=12)
+plt.xlabel('time [Gyr]', fontsize=12)
+plt.xticks(fontsize=12)
+plt.yticks(fontsize=12)
+plt.legend(fontsize=12, bbox_to_anchor=(1, 1), loc='top right')
+# plt.savefig("SFR.png",bbox_inches="tight")
+plt.show()
+plt.close()
 
+# %%
+plt.figure(figsize=(10,8))
+for i in range(len(models)):
+    plt.plot(timestep, StellarMass[i],label="{}".format(modelnames[i]))
+plt.yscale('log')
+plt.ylabel('Stellar mass [10^10 Msun]', fontsize=12)
+plt.xlabel('time [Gyr]', fontsize=12)
+plt.xticks(fontsize=12)
+plt.yticks(fontsize=12)
+plt.legend(fontsize=12, bbox_to_anchor=(1, 0), loc='lower right')
+# plt.savefig("StellarMass.png",bbox_inches="tight")
+plt.show()
+plt.close()
 # %%
 
 
