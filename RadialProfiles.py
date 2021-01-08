@@ -14,31 +14,34 @@ from tqdm import trange
 # # Load data set
 
 # %%
-time = 100 # at 1 Gyr
-H = 4 # height to calculate outflow rate
-models = ["Osaka2019_isogal"
-          , "geodome_model/ver_19.11.1"
-              , "geodome_model/OKU2020"
-          , "centroid_model/ver07271_NoMomCeiling"
-          , "centroid_model/ver07272_CHEVALIER1974"
-          , "centroid_model/ver07272_nfb1"
-          , "centroid_model/ver07272_SFE001"
+time = 90 # at 1 Gyr
+H = 1 # height to calculate outflow rate
+
+models = [
+    ["Osaka2019_isogal", "Osaka2019"],
+        #   , "geodome_model/geodome_original"\
+    # ["geodome_model/ver_19.11.1", "Geodesic dome model & Cioffi+ 1988"],
+    # ["geodome_model/OKU2020","Geodesic dome model & Athena fitting"],
+    # ["centroid_model/ver07271_NoMomCeiling","Centroid model & Athena fitting (alpha = 0)"],
+    # ["centroid_model/ver07272_nfb1","Centroid model & Athena fitting (nfb = 1)"],
+    # ["centroid_model/ver07272_SFE001","Centroid model & Athena fitting (SFE = 0.01)"],
+    # ["centroid_model/ver07311","Centroid model & Athena fitting (alpha = -1)"],
+    # ["centroid_model/ver07311_fdens-2","Centroid model & Athena fitting (alpha = -2)"],
+    # ["centroid_model/ver08041_alpha-1","Centroid model & Athena fitting (new, alpha = -1)"],
+    # ["centroid_model/ver08041_alpha-2","Centroid model & Athena fitting (new, alpha = -2)"],
+    # ["centroid_model/ver07272_CHEVALIER1974","Centroid model & Cioffi+ 1988"],
+    # ["centroid_model/ver09011_n1f2a0","Centroid model a0"],
+    # ["centroid_model/ver09011_n1f2a050","Centroid model a050"],
+    ["centroid_model/ver12151","Centroid"],
+    ["ss_model/ver12211","Spherical superbubble"],
+    ["NoFB", "No feedback"],
           ]
-modelnames = [
-    "Osaka2019",
-    "Geodesic dome model & Cioffi+ 1988",
-    "Geodesic dome model & Athena fitting",
-    "Centroid model & Athena fitting",
-    "Centroid model & Cioffi+ 1988",
-    "Centroid model & Athena fitting (nfb = 1)",
-    "Centroid model & Athena fitting (SFE = 0.01)",
-]
 
 snapshot = [0]*len(models)
 subfind  = [0]*len(models)
 for i in range(len(models)):
-    snapshot[i] = h5py.File('{0}/snapshot_{1:03}/snapshot_{1:03}.hdf5'.format(models[i], time), 'r')
-    subfind[i]  = h5py.File('{0}/snapshot_{1:03}/groups_{1:03}/sub_{1:03}.hdf5'.format(models[i], time), 'r')
+    snapshot[i] = h5py.File('{0}/snapshot_{1:03}/snapshot_{1:03}.hdf5'.format(models[i][0], time), 'r')
+    subfind[i]  = h5py.File('{0}/snapshot_{1:03}/groups_{1:03}/sub_{1:03}.hdf5'.format(models[i][0], time), 'r')
 
 
 # %%
@@ -63,30 +66,60 @@ def integral(hsml, z):
 
 np_W3 = np.frompyfunc(W3,2,1)
 np_int = np.frompyfunc(integral,2,1)
-def main_r(Z, hsml, Vz, M, H):
-    dz = np.abs(np.abs(Z) - H)
-    npdotM = np_int(hsml, dz)*M*np.abs(Vz)
-    dotM_p = np.where((dz < hsml) & (Z > 0) & (Vz > 0), npdotM, 0)
-    dotM_m = np.where((dz < hsml) & (Z < 0) & (Vz < 0), npdotM, 0)
 
-    #npdotM_m = np_int(hsml[index_m[0]], dz[index_m[0]])*M[index_m[0]]*np.abs(Vz[index_m[0]])
-    #npdotM_p = np_int(hsml[index_p[0]], dz[index_p[0]])*M[index_p[0]]*np.abs(Vz[index_p[0]])
+def Mout(Z, hsml, Vz, M, T, H, flag):
+    dz = np.abs(np.abs(Z) - H)
+    dMout = np_int(hsml, dz)*M*np.abs(Vz)
+    if flag == 0: #cold outflow
+        dotM_p = np.where((dz < hsml) & (Z > 0) & (Vz > 0) & (T < 1e5), dMout, 0)
+        dotM_m = np.where((dz < hsml) & (Z < 0) & (Vz < 0) & (T < 1e5), dMout, 0)
+    else: # hot outflow
+        dotM_p = np.where((dz < hsml) & (Z > 0) & (Vz > 0) & (T > 1e5), dMout, 0)
+        dotM_m = np.where((dz < hsml) & (Z < 0) & (Vz < 0) & (T > 1e5), dMout, 0)
+
     dotM = dotM_m + dotM_p
     return dotM
 
+def Eout(Z, hsml, Vx, Vy, Vz, M, U, H, flag):
+    dz = np.abs(np.abs(Z) - H)
+    E = 0.5*M*(Vz*Vz) + U*M
+    dEout = np_int(hsml, dz)*E*np.abs(Vz)
+    
+    if flag == 0: #cold outflow
+        dotE_p = np.where((dz < hsml) & (Z > 0) & (Vz > 0) & (T < 1e5), dEout, 0)
+        dotE_m = np.where((dz < hsml) & (Z < 0) & (Vz < 0) & (T < 1e5), dEout, 0)
+    else: # hot outflow
+        dotE_p = np.where((dz < hsml) & (Z > 0) & (Vz > 0) & (T > 1e5), dEout, 0)
+        dotE_m = np.where((dz < hsml) & (Z < 0) & (Vz < 0) & (T > 1e5), dEout, 0)
+
+    dotE = dotE_m + dotE_p
+    return dotE
+
+def cumulate(array):
+    ret = []
+    for i in range(len(array)):
+        if i == 0:
+            ret.append(array[i])
+        else:
+            ret.append(ret[i-1] + array[i])
+    return ret
 # %% [markdown]
 # ## Radial profile
 # ### 0: gas, 1: dark matter, 4: star
 
 # %%
-NumBin = 100
-Rmax = 100
+NumBin = 40
+Rmax = 40
 Profiles = [[0,'Masses'],
             [0,'StarFormationRate'],
             [1,'Masses'],
             [4,'Masses'],
             [0,'Metallicity'],
-            [0,'OutFlowRate']]
+            [0,'OutFlowRateCold'],
+            [0,'OutFlowRateHot'],
+            [0,'EnergyOutFlowRateCold'],
+            [0,'EnergyOutFlowRateHot']
+]
 
 # model, profile, X-axis, Y-axis
 SurfaceDensityProfile = [[[0]*2 for i in range(len(Profiles))] for j in range(len(models))] 
@@ -101,13 +134,23 @@ for k in range(len(models)):
         Y = np.array(snapshot[k]['PartType{}/Coordinates'.format(Profiles[l][0])]).T[1] - GalPos[1]
         Z = np.array(snapshot[k]['PartType{}/Coordinates'.format(Profiles[l][0])]).T[2] - GalPos[2]
         hsml = np.array(snapshot[k]['PartType0/SmoothingLength'])
+        Vx = np.array(snapshot[k]['PartType0/Velocities']).T[0]
+        Vy = np.array(snapshot[k]['PartType0/Velocities']).T[1]
         Vz = np.array(snapshot[k]['PartType0/Velocities']).T[2]
         M = np.array(snapshot[k]['PartType0/Masses'])
+        U = np.array(snapshot[k]['PartType0/InternalEnergy'])
+        T = np.array(snapshot[k]['PartType0/Temperature'])
         Radius_cyl = np.sqrt(X**2 + Y**2)
         if Profiles[l] == [1, 'Masses']:
             Weight = np.ones(len(Radius_cyl)) * snapshot[k]['Header'].attrs['MassTable'][1]
-        elif Profiles[l] == [0, 'OutFlowRate']:
-            Weight = main_r(Z, hsml, Vz, M, H)
+        elif Profiles[l] == [0, 'OutFlowRateCold']:
+            Weight = Mout(Z, hsml, Vz, M, T, H, 0)
+        elif Profiles[l] == [0, 'OutFlowRateHot']:
+            Weight = Mout(Z, hsml, Vz, M, T, H, 1)
+        elif Profiles[l] == [0, 'EnergyOutFlowRateCold']:
+            Weight = Eout(Z, hsml, Vx, Vy, Vz, M, U, H, 0)
+        elif Profiles[l] == [0, 'EnergyOutFlowRateHot']:
+            Weight = Eout(Z, hsml, Vx, Vy, Vz, M, U, H, 1)
         else:
             Weight = np.array(snapshot[k]['PartType{}/{}'.format(Profiles[l][0], Profiles[l][1])])
         
@@ -122,14 +165,17 @@ for k in range(len(models)):
             SurfaceDensityProfile[k][l][1] = SurfaceDensityProfile[k][l][1]/Area*1e10
         if Profiles[l][1] == 'StarFormationRate':
             SurfaceDensityProfile[k][l][1] = SurfaceDensityProfile[k][l][1]/Area
-        if Profiles[l][1] == 'OutFlowRate':
-            SurfaceDensityProfile[k][l][1] = SurfaceDensityProfile[k][l][1]/Area*1e10*3.1536e7/3.085677581e16
+        if Profiles[l][1] == 'OutFlowRateCold' or Profiles[l][1] == 'OutFlowRateHot':
+            SurfaceDensityProfile[k][l][1] = SurfaceDensityProfile[k][l][1]/Area*2e43*3.1536e7/3.085677581e16
+        if Profiles[l][1] == 'EnergyOutFlowRateCold' or Profiles[l][1] == 'EnergyOutFlowRateHot':
+            SurfaceDensityProfile[k][l][1] = SurfaceDensityProfile[k][l][1]/Area*2e53*3.1536e7/3.085677581e16
         if Profiles[l] == [0, 'Metallicity']:
             X = np.array(snapshot[k]['PartType4/Coordinates']).T[0] - GalPos[0]
             Y = np.array(snapshot[k]['PartType4/Coordinates']).T[1] - GalPos[1]
             Radius_star = np.sqrt(X**2 + Y**2)
             Distribution = np.sort(np.vstack([np.array(snapshot[k]['PartType4/Masses']), Radius_star]))
-            Cumulative = np.dot(Distribution[0], np.tri(len(Radius_star)).T)
+            # Cumulative = np.dot(Distribution[0], np.tri(len(Radius_star)).T)
+            Cumulative = cumulate(Distribution[0])
             StellarMass = sum(snapshot[k]['PartType4/Masses'])
             HalfMassIndex = np.amax(np.where(Cumulative < 0.5*StellarMass))
             HalfMassRadius = Distribution[1][HalfMassIndex]
@@ -199,7 +245,7 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=modelnames[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i][1])
         for i in range(len(ObsData)):
             ax.fill_between(ObsData[i].T[0], ObsData[i].T[2]*1e6+ObsData[i].T[3]*1e6, ObsData[i].T[2]*1e6-ObsData[i].T[3]*1e6, alpha=0.5)#, label=ObsDataName[i])
             # ax.errorbar(ObsData[i].T[0], ObsData[i].T[2]*1e6, yerr=ObsData[i].T[3]*1e6,fmt=',')#, label=ObsDataName[i])
@@ -215,7 +261,7 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=modelnames[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i][1])
         for i in range(len(ObsData)):
             ax.fill_between(ObsData[i].T[0], ObsData[i].T[8]*1e-4+ObsData[i].T[9]*1e-4, ObsData[i].T[8]*1e-4-ObsData[i].T[9]*1e-4, alpha=0.5)#, label=ObsDataName[i])
             # ax.errorbar(ObsData[i].T[0], ObsData[i].T[8]*1e-4, yerr=ObsData[i].T[9]*1e-4, linestyle='dashed')#, label=ObsDataName[i])
@@ -231,7 +277,7 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=modelnames[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i][1])
         ax.legend()      
         for i in range(len(ObsData)):
             ax.fill_between(ObsData[i].T[0], ObsData[i].T[6]*1e+6+ObsData[i].T[7]*1e+6, ObsData[i].T[6]*1e+6-ObsData[i].T[7]*1e+6, alpha=0.7)#, label=ObsDataName[i])
@@ -249,7 +295,7 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=modelnames[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i][1])
         ax.legend()
         print(Profiles[j])
     if j == 5:
@@ -262,35 +308,62 @@ def plot(j):
         ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
-            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=modelnames[i])
+            ax.plot(SurfaceDensityProfile[i][j][0], SurfaceDensityProfile[i][j][1], linewidth= 3.0,label=models[i][1])
         ax.legend()
         print(Profiles[j])
     if j == 6:
-        figname = 'SigmaMassLoadingFactor'
+        figname = 'SpecificEnergy'
         ax.set_yscale('log')
-        ax.set_xlabel('Distance from center [kpc]')
-        ax.set_ylabel('Mass loading factor')
-        ax.set_xlim(0,30)
-        #ax.set_ylim(1e-8,1e-3)
-        ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
-        ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
+        ax.set_xscale('log')
+        ax.set_xlabel('$\Sigma_{SFR}$ [Msun/kpc$^2$]')
+        ax.set_ylabel('$e_s$ [erg g$^{-1}$]')
+        ax.set_xlim(1e-4,10)
+        ax.set_ylim(1e12, 1e16)
+        # ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
+        # ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
+        for i in range(len(models)):
+            SigmaMOFcold = np.where(np.array(SurfaceDensityProfile[i][5][1]) > 0, np.array(SurfaceDensityProfile[i][5][1]), np.inf)
+            SigmaMOFhot = np.where(np.array(SurfaceDensityProfile[i][6][1]) > 0, np.array(SurfaceDensityProfile[i][6][1]), np.inf)
+            ax.scatter(SurfaceDensityProfile[i][1][1], np.array(SurfaceDensityProfile[i][7][1])/SigmaMOFcold, marker="^",label=models[i][1])
+            ax.scatter(SurfaceDensityProfile[i][1][1], np.array(SurfaceDensityProfile[i][8][1])/SigmaMOFhot,label=models[i][1])
+        ax.legend()
+        print("specific energy")
+    if j == 7:
+        figname = 'SpecificEnergy'
+        ax.set_yscale('log')
+        ax.set_xscale('log')
+        ax.set_xlabel('$\Sigma_{SFR}$ [Msun/kpc$^2$]')
+        ax.set_ylabel('$\eta$')
+        ax.set_xlim(1e-4,10)
+        ax.set_ylim(1e-3, 1)
+        # ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
+        # ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
         for i in range(len(models)):
             SigmaSFR = np.where(np.array(SurfaceDensityProfile[i][1][1]) > 0, np.array(SurfaceDensityProfile[i][1][1]), np.inf)
-            ax.plot(SurfaceDensityProfile[i][1][0], np.array(SurfaceDensityProfile[i][5][1])/SigmaSFR,label=modelnames[i])
+            ax.scatter(SurfaceDensityProfile[i][1][1], np.array(SurfaceDensityProfile[i][7][1])/SigmaSFR/(1e51/1e2), marker="^",label=models[i][1])
+            ax.scatter(SurfaceDensityProfile[i][1][1], np.array(SurfaceDensityProfile[i][8][1])/SigmaSFR/(1e51/1e2),label=models[i][1])
         ax.legend()
-        print("mass loading factor")
-
+        print("energy loading factor")
+    
     plt.rcParams.update({"font.size": 14})
     plt.legend(fontsize=12)
-    return
+    return figname
 
 
 # %%
-plot(4)
-# plt.savefig('Metallicity.png')
+plot(7)
+
+# plot(5)
+# plt.savefig('SigmaGas.png')
 
 # %% 
 Profiles
 
+
+# %%
+for i in [0, 1, 3, 4, 6]:
+    figname = plot(i)
+    plt.savefig("results/{}.pdf".format(figname))
+    plt.close()
 
 # %%
