@@ -15,31 +15,29 @@ from statistics import stdev
 
 # %%
 time = 100 # at 1 Gyr
-models = ["Osaka2019_isogal"
-          , "geodome_model/ver_19.11.1"
-          , "geodome_model/OKU2020"
-          , "centroid_model/ver07271_NoMomCeiling"
-          , "centroid_model/ver07272_CHEVALIER1974"
-          , "centroid_model/ver07272_nfb1"
-          , "centroid_model/ver07272_SFE001"
-          ]
-modelnames = [
-    "Osaka2019",
-    "Geodesic dome model & Cioffi+ 1988",
-    "Geodesic dome model & Athena fitting",
-    "Centroid model & Athena fitting",
-    "Centroid model & Cioffi+ 1988",
-    "Centroid model & Athena fitting (nfb = 1)",
-    "Centroid model & Athena fitting (SFE = 0.01)",
+models = [
+  ["Osaka2019_isogal", "Osaka2019"],
+  # [ "geodome_model/ver_19.11.1", "Geodesic dome model & Cioffi+ 1988"],
+  # [ "geodome_model/OKU2020", "Geodesic dome model & Athena fitting"],
+  # [ "centroid_model/ver07271_NoMomCeiling", "Centroid model & Athena fitting (alpha = 0)"],
+  # [ "centroid_model/ver07311", "Centroid model & Athena fitting (alpha = -1)"],
+  # [ "centroid_model/ver07311_fdens-2", "Centroid model & Athena fitting (alpha = -2)"],
+  # [ "centroid_model/ver07272_CHEVALIER1974", "Centroid model & Cioffi+ 1988"],
+  # [ "centroid_model/ver07272_nfb1", "Centroid model & Athena fitting (nfb = 1)"],
+  # [ "centroid_model/ver07272_SFE001", "Centroid model & Athena fitting (SFE = 0.01)"],
+    ["centroid_model/ver12151","Centroid"],
+    ["ss_model/ver01051","Spherical superbubble"],
+    ["ss_model/ver01092","Spherical superbubble"],
 ]
 snapshot = [0]*len(models)
 subfind  = [0]*len(models)
 for i in range(len(models)):
-    snapshot[i] = h5py.File('{0}/snapshot_{1:03}/snapshot_{1:03}.hdf5'.format(models[i], time), 'r')
-    subfind[i]  = h5py.File('{0}/snapshot_{1:03}/groups_{1:03}/sub_{1:03}.hdf5'.format(models[i], time), 'r')
+    snapshot[i] = h5py.File('{0}/snapshot_{1:03}/snapshot_{1:03}.hdf5'.format(models[i][0], time), 'r')
+    subfind[i]  = h5py.File('{0}/snapshot_{1:03}/groups_{1:03}/sub_{1:03}.hdf5'.format(models[i][0], time), 'r')
 
 # %%
-patchsize = 1.0 # kpc
+H = 1 # disk height in kpc
+patchsize = 0.75 # kpc
 Rmax = 10 # kpc
 Range = int(Rmax / patchsize)
 
@@ -69,7 +67,7 @@ for k in range(len(models)):
         for i in np.arange(-Range, Range):
           for j in np.arange(-Range, Range):
             tmp = np.where((patchsize*i < X) & ( X < patchsize*(i+1))\
-             & (patchsize*j < Y) & (Y < patchsize*(j+1)) , Weight, 0)
+             & (patchsize*j < Y) & (Y < patchsize*(j+1)) & (-H < Z) & (Z < H) , Weight, 0)
             if Profiles[l][1] == "Masses":
               area = patchsize*patchsize*1e6 # patchsize in pc^2
               surfacedensity = sum(tmp)*1e10/area
@@ -93,14 +91,20 @@ for k in range(len(models)):
     KSrelation[k][2][l] = SurfaceDensityProfile_arr[k][1][index].std()
 # %%
 # for k in [0]:
+plt.figure(figsize=(8,6))
 for k in range(len(models)):
-  plt.errorbar(KSrelation[k][0], KSrelation[k][1], yerr=KSrelation[k][2], capsize=4, label=modelnames[k])
+  plt.errorbar(np.array(KSrelation[k][0])+2e-2*k, KSrelation[k][1], yerr=KSrelation[k][2], capsize=4, label=models[k][1])
   # plt.scatter(SurfaceDensityProfile_arr[k][0], SurfaceDensityProfile_arr[k][1], linewidths=0.1, alpha=0.2, label=models[k])
 arr = np.linspace(-1,3)
-plt.plot(arr, 1.42*arr - 3.83, label="Daddi+ 2010")
-plt.xlabel(r"log $\Sigma_{\rm gas}$ [$M_{\odot}$ pc$^{-2}$]")
-plt.ylabel(r"log $\Sigma_{\rm SFR}$ [$M_{\odot}$ yr$^{-1}$ kpc$^{-2}$]")
-plt.legend()
-plt.xlim(0, 2)
-plt.ylim(-4.5, 0)
-plt.show()
+plt.plot(arr, 1.42*arr - 3.83, label="Daddi+ 2010 (slope 1.42)")
+plt.xlabel(r"log $\Sigma_{\rm gas}$ [$M_{\odot}$ pc$^{-2}$]", fontsize=16)
+plt.ylabel(r"log $\Sigma_{\rm SFR}$ [$M_{\odot}$ yr$^{-1}$ kpc$^{-2}$]", fontsize=16)
+plt.legend(fontsize=11)
+plt.xlim(0.5, 2.5)
+plt.ylim(-4.0, 0.5)
+plt.xticks(fontsize=12)
+plt.yticks(fontsize=12)
+# plt.show()
+# plt.savefig("KS.png")
+
+# %%

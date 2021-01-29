@@ -11,19 +11,27 @@ import numba
 from tqdm import trange
 
 # %%
-time = 100 # number of snapshots in 0 -- 1 Gyr
-H = 100 # height from galactic plane in kpc
+H = 4 # height from galactic plane in kpc
 alpha = 3.1536e7/3.085677581e16 # 1 km/sec in kpc/yr
+timestep = np.linspace(0.01,0.8,80)
+time = len(timestep) # number of snapshots in 0 -- 1 Gyr
 
-models = ["Osaka2019_isogal"
+models = [
+    ["Osaka2019_isogal", "Osaka2019"],
         #   , "geodome_model/geodome_original"\
-          , "geodome_model/ver_19.11.1"
-          , "geodome_model/OKU2020"
-          , "centroid_model/ver07271_NoMomCeiling"
-          , "centroid_model/ver07272_CHEVALIER1974"
-          , "centroid_model/ver07272_nfb1"
-          , "centroid_model/ver07272_SFE001"
+    # ["geodome_model/ver_19.11.1", "Geodesic dome model & Cioffi+ 1988"],
+    # ["geodome_model/OKU2020","Geodesic dome model & Athena fitting"],
+    # ["centroid_model/ver07271_NoMomCeiling","Centroid model & Athena fitting (alpha = 0)"],
+    # ["centroid_model/ver07272_nfb1","Centroid model & Athena fitting (nfb = 1)"],
+    # ["centroid_model/ver07272_SFE001","Centroid model & Athena fitting (SFE = 0.01)"],
+    ["centroid_model/ver07311","Centroid model & Athena fitting (alpha = -1)"],
+    ["centroid_model/ver07311_fdens-2","Centroid model & Athena fitting (alpha = -2)"],
+    ["centroid_model/ver08041_alpha-1","Centroid model & Athena fitting (new, alpha = -1)"],
+    ["centroid_model/ver08041_alpha-2","Centroid model & Athena fitting (new, alpha = -2)"],
+    ["centroid_model/ver08041_NoThermal","Centroid model & Athena fitting (new, alpha = -2, No thermal)"],
+    # ["centroid_model/ver07272_CHEVALIER1974","Centroid model & Cioffi+ 1988"],
           ]
+
 
 snapshot = [[0]*time for i in range(len(models))]
 subfind  = [[0]*time for i in range(len(models))]
@@ -39,8 +47,8 @@ StellarMass = [[0]*time for i in range(len(models))]
 
 for i in range(len(models)):
     for j in range(time):
-        snapshot[i][j] = h5py.File('/home/oku/SimulationData/isogal/{0}/snapshot_{1:03}/snapshot_{1:03}.hdf5'.format(models[i], j+1), 'r')
-        subfind[i][j]  = h5py.File('/home/oku/SimulationData/isogal/{0}/snapshot_{1:03}/groups_{1:03}/sub_{1:03}.hdf5'.format(models[i], j+1), 'r')
+        snapshot[i][j] = h5py.File('/home/oku/SimulationData/isogal/{0}/snapshot_{1:03}/snapshot_{1:03}.hdf5'.format(models[i][0], j+1), 'r')
+        subfind[i][j]  = h5py.File('/home/oku/SimulationData/isogal/{0}/snapshot_{1:03}/groups_{1:03}/sub_{1:03}.hdf5'.format(models[i][0], j+1), 'r')
 
 # %% [markdown]
 # ## Kernel function
@@ -143,7 +151,10 @@ for k in range(len(models)):
 
         MassOutFlowRate[k][t] = dotM*1e10*alpha
         try:
-            OutFlowVelocity[k][t] = max([np.max(Vz[Z > H]), -np.min(Vz[Z < H])])*alpha*1e9
+            dz = np.abs(np.abs(Z - GalPos[2]) - H)
+            index_p = np.where((dz < hsml) & (Z > 0) & (Vz > 0))
+            index_m = np.where((dz < hsml) & (Z < 0) & (Vz < 0))
+            OutFlowVelocity[k][t] = max([np.max(Vz[index_p[0]]) - GalVel[2], -np.min(Vz[index_m[0]]) + GalVel[2]])*alpha*1e9
         except:
             OutFlowVelocity[k][t] = 0
         # MassOutFlowRate_S19[k][t] = dotM_S19*1e10*alpha
@@ -152,7 +163,7 @@ for k in range(len(models)):
         # MassOutFlowRate_r10[k][t] = dotM_r10*1e10*alpha
         # MassOutFlowRate_r20[k][t] = dotM_r20*1e10*alpha
         SFR[k][t] = np.sum(np.array(snapshot[k][t]['PartType0/StarFormationRate']))
-        StellarMass[k][t] = np.sum(np.array(snapshot[k][t]['PartType4/Masses']))
+        StellarMass[k][t] = np.sum(np.array(snapshot[k][t]['PartType4/Masses']))*1e10 + 3.84e10
         # print("t {}, dotM {}, dotM_approx {}".format(t, dotM, dotM_approx))
 
 
@@ -171,7 +182,6 @@ for k in range(len(models)):
 
 
 # %%
-timestep = np.linspace(0.01,1.00,100)
 # plt.plot(timestep,np.array(MassOutFlowRate_S19[0])*np.sqrt(timestep), label="Shimizu et al. (2019)")
 # plt.plot(timestep,MassOutFlowRate_S19[0], linestyle="dashed", label=r"$\sqrt{t/1\,{\rm Gyr}}$ fixed")
 # plt.plot(timestep,MassOutFlowRate[0], linestyle="dotted", label=r"$\sqrt{t/1\,{\rm Gyr}}$ fixed & Eq. (2)")
@@ -180,25 +190,16 @@ timestep = np.linspace(0.01,1.00,100)
 # plt.xlabel('Time [Gyr]')
 # plt.legend(bbox_to_anchor=(1, 0), loc='lower right')
 #plt.savefig("OutflowRate4kpc.pdf")
-# %%
-modelnames = [
-    "Osaka2019",
-    "Geodesic dome model & Cioffi+ 1988",
-    "Geodesic dome model & Athena fitting",
-    "Centroid model & Athena fitting",
-    "Centroid model & Cioffi+ 1988",
-    "Centroid model & Athena fitting (nfb = 1)",
-    "Centroid model & Athena fitting (SFE = 0.01)",
-]
+
 
 # %%
 # data = [0]*len(models)
 # for i in range(len(models)):
 #     data[i] = np.loadtxt('/home/oku/SimulationData/isogal/{}/data/{}'.format(models[i], H))
 
-plt.figure(figsize=(10,8))
+plt.figure(figsize=(8,6))
 for i in range(len(models)):
-    plt.plot(timestep, MassOutFlowRate[i],label="{}".format(modelnames[i]))
+    plt.plot(timestep, MassOutFlowRate[i],label="{}".format(models[i][1]))
     # plt.plot(MassOutFlowRate_S19[i],label="{} my code (Shimizu19 method)".format(models[i]))
     # plt.plot(data[i].T[2],linestyle="dotted", label="{} Shimizu19 code".format(models[i]))
 plt.yscale('log')
@@ -207,14 +208,14 @@ plt.xlabel('time [Gyr]', fontsize=12)
 plt.xticks(fontsize=12)
 plt.yticks(fontsize=12)
 plt.legend(fontsize=12, bbox_to_anchor=(1, 0), loc='lower right')
-# plt.savefig('OutFlowRate1kpc.png',bbox_inches="tight")
+# plt.savefig('OutFlowRate4kpc.png',bbox_inches="tight")
 plt.show()
 plt.close()
 # %%
 
-plt.figure(figsize=(10,8))
+plt.figure(figsize=(8,6))
 for i in range(len(models)):
-    plt.plot(timestep, np.array(MassOutFlowRate[i])/np.array(SFR[i]),label="{}".format(modelnames[i]))
+    plt.plot(timestep, np.array(MassOutFlowRate[i])/np.array(SFR[i]),label="{}".format(models[i][1]))
     # plt.plot(np.array(MassOutFlowRate_S19[i])/np.array(SFR[i]),label="{} my code (Shimizu19 method)".format(models[i]))
     # plt.plot(data[i].T[1],linestyle="dotted", label="{} Shimizu19 code".format(models[i]))
 plt.yscale('log')
@@ -223,48 +224,48 @@ plt.xlabel('time [Gyr]', fontsize=12)
 plt.xticks(fontsize=12)
 plt.yticks(fontsize=12)
 plt.legend(fontsize=12, bbox_to_anchor=(1, 0), loc='lower right')
-# plt.savefig("MassLoadingFactor1kpc.png",bbox_inches="tight")
+# plt.savefig("MassLoadingFactor4kpc.png",bbox_inches="tight")
 plt.show()
 plt.close()
 
 # %%
 
-plt.figure(figsize=(10,8))
+plt.figure(figsize=(8,6))
 for i in range(len(models)):
-    plt.plot(timestep, OutFlowVelocity[i],label="{}".format(modelnames[i]))
+    plt.plot(timestep, OutFlowVelocity[i],label="{}".format(models[i][1]))
 plt.yscale('log')
-plt.ylabel('Max outflow velocity [km/s]')
+plt.ylabel('Max outflow velocity [km/s]', fontsize=12)
 plt.xlabel('time [Gyr]', fontsize=12)
 plt.xticks(fontsize=12)
 plt.yticks(fontsize=12)
 plt.legend(fontsize=12, bbox_to_anchor=(1, 0), loc='lower right')
-# plt.savefig("OutflowVelocity1kpc.png",bbox_inches="tight")
+# plt.savefig("OutflowVelocity4kpc.png",bbox_inches="tight")
 plt.show()
 plt.close()
 # %%
-plt.figure(figsize=(10,8))
+plt.figure(figsize=(8,6))
 for i in range(len(models)):
-    plt.plot(timestep, SFR[i],label="{}".format(modelnames[i]))
+    plt.plot(timestep, SFR[i],label="{}".format(models[i][1]))
 # plt.yscale('log')
 plt.ylabel('Star formation rate [Msun/yr]', fontsize=12)
 plt.xlabel('time [Gyr]', fontsize=12)
 plt.xticks(fontsize=12)
 plt.yticks(fontsize=12)
-plt.legend(fontsize=12, bbox_to_anchor=(1, 1), loc='top right')
+# plt.legend(fontsize=10, bbox_to_anchor=(0, 0), loc='lower left')
 # plt.savefig("SFR.png",bbox_inches="tight")
 plt.show()
 plt.close()
 
 # %%
-plt.figure(figsize=(10,8))
+plt.figure(figsize=(8,6))
 for i in range(len(models)):
-    plt.plot(timestep, StellarMass[i],label="{}".format(modelnames[i]))
+    plt.plot(timestep, (StellarMass + np.ones_like(StellarMass)*3.87)[i],label="{}".format(models[i][1]))
 plt.yscale('log')
-plt.ylabel('Stellar mass [10^10 Msun]', fontsize=12)
+plt.ylabel('Stellar mass [Msun]', fontsize=12)
 plt.xlabel('time [Gyr]', fontsize=12)
 plt.xticks(fontsize=12)
 plt.yticks(fontsize=12)
-plt.legend(fontsize=12, bbox_to_anchor=(1, 0), loc='lower right')
+plt.legend(fontsize=12, bbox_to_anchor=(0, 1), loc='upper left')
 # plt.savefig("StellarMass.png",bbox_inches="tight")
 plt.show()
 plt.close()

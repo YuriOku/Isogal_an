@@ -9,16 +9,18 @@ import math
 import scipy.integrate as integrate
 import warnings
 from tqdm import trange
+import CalcOutFlow as cof
 
 # %% [markdown]
 # # Load data set
 
 # %%
-time = 90 # at 1 Gyr
+time = 250 # at 1 Gyr
 H = 1 # height to calculate outflow rate
 
 models = [
-    ["Osaka2019_isogal", "Osaka2019"],
+    ["ss_model/ver01193","Spherical superbubble"],
+    ["Osaka19", "Shimizu+ 2019"],
         #   , "geodome_model/geodome_original"\
     # ["geodome_model/ver_19.11.1", "Geodesic dome model & Cioffi+ 1988"],
     # ["geodome_model/OKU2020","Geodesic dome model & Athena fitting"],
@@ -32,9 +34,8 @@ models = [
     # ["centroid_model/ver07272_CHEVALIER1974","Centroid model & Cioffi+ 1988"],
     # ["centroid_model/ver09011_n1f2a0","Centroid model a0"],
     # ["centroid_model/ver09011_n1f2a050","Centroid model a050"],
-    ["centroid_model/ver12151","Centroid"],
-    ["ss_model/ver12211","Spherical superbubble"],
-    ["NoFB", "No feedback"],
+    # ["centroid_model/ver12151","Centroid"],
+    ["NoFB2", "No feedback"],
           ]
 
 snapshot = [0]*len(models)
@@ -45,64 +46,7 @@ for i in range(len(models)):
 
 
 # %%
-def W3(r, h):
-    r = abs(r)/h
-    C = 8/h**3/math.pi
-    if r > 1:
-        return 0
-    elif r > 1/2:
-        return C*2*(1-r)**3
-    else:
-        return C*(1 - 6*r**2 + 6*r**3)
 
-def func(x,h,z):
-    return W3(math.sqrt(z**2 + x**2),h)*2*math.pi*x
-
-def integral(hsml, z):
-    if hsml**2 - z**2 < 0:
-        return 0
-    else:
-        return integrate.quad(func, 0, math.sqrt(hsml**2 - z**2), args=(hsml, z))[0]
-
-np_W3 = np.frompyfunc(W3,2,1)
-np_int = np.frompyfunc(integral,2,1)
-
-def Mout(Z, hsml, Vz, M, T, H, flag):
-    dz = np.abs(np.abs(Z) - H)
-    dMout = np_int(hsml, dz)*M*np.abs(Vz)
-    if flag == 0: #cold outflow
-        dotM_p = np.where((dz < hsml) & (Z > 0) & (Vz > 0) & (T < 1e5), dMout, 0)
-        dotM_m = np.where((dz < hsml) & (Z < 0) & (Vz < 0) & (T < 1e5), dMout, 0)
-    else: # hot outflow
-        dotM_p = np.where((dz < hsml) & (Z > 0) & (Vz > 0) & (T > 1e5), dMout, 0)
-        dotM_m = np.where((dz < hsml) & (Z < 0) & (Vz < 0) & (T > 1e5), dMout, 0)
-
-    dotM = dotM_m + dotM_p
-    return dotM
-
-def Eout(Z, hsml, Vx, Vy, Vz, M, U, H, flag):
-    dz = np.abs(np.abs(Z) - H)
-    E = 0.5*M*(Vz*Vz) + U*M
-    dEout = np_int(hsml, dz)*E*np.abs(Vz)
-    
-    if flag == 0: #cold outflow
-        dotE_p = np.where((dz < hsml) & (Z > 0) & (Vz > 0) & (T < 1e5), dEout, 0)
-        dotE_m = np.where((dz < hsml) & (Z < 0) & (Vz < 0) & (T < 1e5), dEout, 0)
-    else: # hot outflow
-        dotE_p = np.where((dz < hsml) & (Z > 0) & (Vz > 0) & (T > 1e5), dEout, 0)
-        dotE_m = np.where((dz < hsml) & (Z < 0) & (Vz < 0) & (T > 1e5), dEout, 0)
-
-    dotE = dotE_m + dotE_p
-    return dotE
-
-def cumulate(array):
-    ret = []
-    for i in range(len(array)):
-        if i == 0:
-            ret.append(array[i])
-        else:
-            ret.append(ret[i-1] + array[i])
-    return ret
 # %% [markdown]
 # ## Radial profile
 # ### 0: gas, 1: dark matter, 4: star
@@ -127,7 +71,8 @@ BinPos = np.linspace(0,Rmax,NumBin+1)
 Area = 4*math.pi*(np.roll(BinPos,-1)**2 - BinPos**2)[:-1]
 
 for k in range(len(models)):
-    GalPos  = subfind[k]['Group/GroupPos'][0]
+    # GalPos  = subfind[k]['Group/GroupPos'][0]
+    GalPos  = cof.FindCenter(np.array(snapshot[k]['PartType0/Coordinates']).T, np.array(snapshot[k]['PartType0/Masses']))
 
     for l in trange(len(Profiles)):
         X = np.array(snapshot[k]['PartType{}/Coordinates'.format(Profiles[l][0])]).T[0] - GalPos[0]
@@ -144,16 +89,18 @@ for k in range(len(models)):
         if Profiles[l] == [1, 'Masses']:
             Weight = np.ones(len(Radius_cyl)) * snapshot[k]['Header'].attrs['MassTable'][1]
         elif Profiles[l] == [0, 'OutFlowRateCold']:
-            Weight = Mout(Z, hsml, Vz, M, T, H, 0)
+            Weight = cof.Mout(Z, hsml, Vz, M, T, H, 0)
         elif Profiles[l] == [0, 'OutFlowRateHot']:
-            Weight = Mout(Z, hsml, Vz, M, T, H, 1)
+            Weight = cof.Mout(Z, hsml, Vz, M, T, H, 1)
         elif Profiles[l] == [0, 'EnergyOutFlowRateCold']:
-            Weight = Eout(Z, hsml, Vx, Vy, Vz, M, U, H, 0)
+            Weight = cof.Eout(Z, hsml, Vz, M, U, T, H, 0)
         elif Profiles[l] == [0, 'EnergyOutFlowRateHot']:
-            Weight = Eout(Z, hsml, Vx, Vy, Vz, M, U, H, 1)
+            Weight = cof.Eout(Z, hsml, Vz, M, U, T, H, 1)
         else:
             Weight = np.array(snapshot[k]['PartType{}/{}'.format(Profiles[l][0], Profiles[l][1])])
         
+        Weight = np.where((Radius_cyl < Rmax) & (np.abs(Z) < H), Weight, 0)
+
         Hist_v = np.histogram(Radius_cyl, bins=NumBin, range=(0, Rmax), weights=Weight)
         X1 = Hist_v[1]
         X2 = np.roll(X1,-1)
@@ -175,7 +122,7 @@ for k in range(len(models)):
             Radius_star = np.sqrt(X**2 + Y**2)
             Distribution = np.sort(np.vstack([np.array(snapshot[k]['PartType4/Masses']), Radius_star]))
             # Cumulative = np.dot(Distribution[0], np.tri(len(Radius_star)).T)
-            Cumulative = cumulate(Distribution[0])
+            Cumulative = cof.cumulate(Distribution[0])
             StellarMass = sum(snapshot[k]['PartType4/Masses'])
             HalfMassIndex = np.amax(np.where(Cumulative < 0.5*StellarMass))
             HalfMassRadius = Distribution[1][HalfMassIndex]

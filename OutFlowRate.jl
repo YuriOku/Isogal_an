@@ -8,17 +8,17 @@ using QuadGK
 using Printf
 ENV["GKSwstype"] = "100"
 # %%
-H = 4 # height from galactic plane in kpc
-rlim = 40 # limit of radius
+H = 1 # height from galactic plane in kpc
+rlim = 10 # limit of radius
 kmsinkpcyr = 3.1536e7/3.085677581e16 # 1 km/sec in kpc/yr
 # timestep = np.linspace(0.01,0.8,80)
-time = 100 # number of snapshots in 0 -- 1 Gyr
+time = 300 # number of snapshots in 0 -- 1 Gyr
 binwidth = 100
 binwidthtemp = 0.25
 rootdirectory = "/home/oku/SimulationData/isogal"
 
 models = [
-    ["Osaka2019_isogal", "Osaka2019 (Shimizu+19)"],
+    # ["Osaka2019_isogal", "Osaka2019 (Shimizu+19)"],
         #   , "geodome_model/geodome_original"\
     # ["geodome_model/ver_19.11.1", "Geodesic dome model & Cioffi+ 1988"],
     # ["geodome_model/OKU2020","Geodesic dome model & Athena fitting"],
@@ -37,10 +37,14 @@ models = [
     # ["centroid_model/ver09011_n1f2a050","Centroid model (new, alpha = -0.50)"],
     # ["centroid_model/ver09011_n1f2a075","Centroid model (new, alpha = -0.75)"],
     # ["centroid_model/ver09011_n1f2a1","Centroid model (new, alpha = -1.00)"],
-    ["centroid_model/ver12151","Centroid"],
-    ["ss_model/ver01051", "Spherical superbubble"],
+    # ["centroid_model/ver12151","Centroid"],
+    # ["ss_model/ver01051", "Spherical superbubble"],
+    # ["ss_model/ver01152", "Spherical superbubble"],
     # ["ss_model/ver12211", "Spherical superbubble"],
-    ["NoFB", "No feedback"],
+    # ["NoFB", "No feedback"],
+    ["ss_model/ver01193", "Spherical superbubble"],
+    ["Osaka19", "Shimizu+ 19"],
+    # ["NoFB2", "No feedback"],
     ]
 # %%
 function W3(r, h)
@@ -85,7 +89,7 @@ function main(H, sph, galaxy)
         z = abs(sph.pos[3,i] - galaxy.pos[3,1])
         dz = abs(z - H)
         r = sqrt((sph.pos[1,i]-galaxy.pos[1,1])^2 + (sph.pos[2,i]-galaxy.pos[2,1])^2)
-        if dz < sph.hsml[i] && r < rlim
+        if dz < sph.hsml[i] && r < rlim ##&& sph.temp[i] > 1e5
             v = abs(sph.vel[3,i] - galaxy.vel[3,1])
             ibinvel = Int(ceil(v/binwidth))
             if ibinvel == 0
@@ -138,7 +142,17 @@ function maxandeff(bins, mdot, totalmdot)
     end
     return (vmax, veff)
 end
-
+function center(sph)
+    ret = zeros(3)
+    totalmass = sum(sph.mass)
+    for i in 1:length(sph.mass)
+        ret[1] += sph.pos[1,i]*sph.mass[i]
+        ret[2] += sph.pos[2,i]*sph.mass[i]
+        ret[3] += sph.pos[3,i]*sph.mass[i]
+    end
+    ret = ret./totalmass
+    return ret
+end
 struct Sph
     pos::Array{Float32, 2}
     vel::Array{Float32, 2}
@@ -149,7 +163,7 @@ struct Sph
     u::Array{Float32, 1}
 end
 struct Galaxy
-    pos::Array{Float32, 2}
+    pos::Array{Float32, 1}
     vel::Array{Float32, 2}
     sfr::Float32
     stellarmass::Float32
@@ -184,8 +198,10 @@ for i in 1:length(models)
             global sph = Sph(pos, vel, hsml, mass, rho, temp, u)
         end
         h5open(path2subfind, "r") do gp
-            galpos = read(gp,"Group/GroupPos")
-            galvel = read(gp,"Subhalo/SubhaloVel")
+            # galpos = read(gp,"Group/GroupPos")
+            galpos = center(sph)
+            # galvel = read(gp,"Subhalo/SubhaloVel")
+            galvel = Float32[0.0 0.0; 0.0 0.0; 0.0 0.0]
             galsfr = sum(sfr)
             stellarmass = sum(massstars)
             global galaxy = Galaxy(galpos, galvel, galsfr, stellarmass)
@@ -242,23 +258,23 @@ Plots.savefig("results/OutFlowVelocityEff.pdf")
 
 Plots.plot(ylim=(1e-7,1e-1), yscale=:log10, xlim=(0,2e3))
 for i in 1:length(models)
-Plots.plot!(Xaxisvel[i][82], MassOutFlowRatevel[i][82], label=models[i][2])
-end
+Plots.plot!(Xaxisvel[i][250], MassOutFlowRatevel[i][250], label=models[i][2])
 Plots.savefig("results/MassOutFlowVelocityHistgram.pdf")
+end
 
-Plots.plot(ylim=(1e-4,1e-1), yscale=:log10, xlim=(3,8))
+Plots.plot(ylim=(1e-4,1e1), yscale=:log10, xlim=(3,7), xlabel="log Temperature [K]", ylabel="Mass outflow rate [Msun/yr]")
 for i in 1:length(models)
-Plots.plot!(Xaxistemp[i][80], MassOutFlowRatetemp[i][80], label=models[i][2])
+Plots.plot!(Xaxistemp[i][250], MassOutFlowRatetemp[i][250], label=models[i][2])
 end
 Plots.savefig("results/MassOutFlowTemperatureHistgram.pdf")
 
-Plots.plot(ylabel="Mass outflow rate [Msun/yr]", xlabel="Time [Gyr]",legend=:bottomright, yscale=:log10, ylim=(1e-3,1e0))
+Plots.plot(ylabel="Mass outflow rate [Msun/yr]", xlabel="Time [Gyr]",legend=:bottomright, yscale=:log10, ylim=(1e-1,2e1))
 for i in 1:length(models)
 Plots.plot!(X, MassOutFlowRateTotal[i], label=models[i][2])
 end
 Plots.savefig("results/MassOutFlowRate.pdf")
 
-Plots.plot(ylabel="SFR [Msun/yr]", xlabel="Time [Gyr]")
+Plots.plot(ylabel="SFR [Msun/yr]", xlabel="Time [Gyr]", yscale=:log10, ylim=(1e-1,2e1))
 for i in 1:length(models)
 Plots.plot!(X, SFR[i], label=models[i][2])
 end
@@ -270,7 +286,7 @@ Plots.plot!(X, StellarMass[i], label=models[i][2])
 end
 Plots.savefig("results/StellarMass.pdf")
     
-Plots.plot(xlabel="Time [Gyr]", ylabel="Mass loading factor", legend=:topleft, ylim=(0,3e-1))
+Plots.plot(xlabel="Time [Gyr]", ylabel="Mass loading factor", legend=:topleft, yscale=:log10, ylim=(5e-2,2e1))
 for i in 1:length(models)
 Plots.plot!(X, MassLoadingFactor[i], label=models[i][2])
 end
@@ -283,7 +299,7 @@ Plots.savefig("results/MassLoadingFactor.pdf")
 # end
 # Plots.savefig("results/EnergyOutFlowRate.pdf")
 
-Plots.plot(xlabel="Time [Gyr]", ylabel="Energy loading factor", legend=:topleft, yscale=:log10, ylim=(1e-3,1))
+Plots.plot(xlabel="Time [Gyr]", ylabel="Energy loading factor", legend=:topleft, yscale=:log10, ylim=(1e-4,1e-1))
 for i in 1:length(models)
 Plots.plot!(X, EnergyLoadingFactor[i], label=models[i][2])
 end
